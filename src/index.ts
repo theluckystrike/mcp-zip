@@ -291,7 +291,7 @@ server.registerTool("zip_create", {
 
 server.registerTool("zip_list", {
   title: "List a zip archive",
-  description: "Call this tool to list an archive's entries with sizes, compressed sizes and ratios, and to flag what is dangerous in it: absolute paths, .., symlinks, encrypted entries, duplicate names and compression bombs.",
+  description: "Call this tool to list an archive's entries with sizes and ratios and flag what is dangerous: absolute paths, .., symlinks, encrypted entries, duplicate names and bombs. Read-only. Run it before zip_extract.",
   inputSchema: {
     path: z.string().describe("Path to the .zip file. Read-only: the archive is never modified and nothing is extracted"),
     limit: z.number().int().min(1).max(2000).optional().describe("How many entries to print, largest first (default 50). The totals always cover every entry"),
@@ -442,7 +442,7 @@ server.registerTool("zip_extract", {
 
 server.registerTool("zip_add", {
   title: "Add files to a zip",
-  description: "Call this tool to add files to an existing archive. The archive is rebuilt from its entries and written tmp-then-rename, so a failure part way leaves the original file exactly as it was.",
+  description: "Call this tool to add files to an existing archive under their own names, or under prefix. A name clash is refused unless replace. An archive holding unsafe entries is refused rather than rewritten.",
   inputSchema: {
     path: z.string().describe("Path to the existing .zip file"),
     paths: z.array(z.string()).min(1).describe("Files to add, each stored under its own file name. A directory contributes its tree under its own name"),
@@ -644,7 +644,7 @@ server.registerTool("zip_bundle_month", {
 
 server.registerTool("zip_history", {
   title: "Archives created",
-  description: "List the archives this server created, newest first, with their entry counts and sizes, plus how many of this month's free allowance are left.",
+  description: "List the archives this server created, newest first, with entry counts, sizes and paths, plus how much of the free 20 a month is used. It reads the register only; use zip_list to see inside one.",
   inputSchema: {
     limit: z.number().int().min(1).max(200).optional().describe("How many rows to show, newest first (default 20)"),
   },

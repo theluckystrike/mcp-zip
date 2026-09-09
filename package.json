@@ -1,6 +1,6 @@
 {
   "name": "@theluckystrike/mcp-zip",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "description": "Create, inspect and extract zip archives from chat: glob a directory into a zip, list what is inside with a bomb and traversal check, extract safely, read one text entry without unpacking. No network.",
   "type": "module",
   "bin": {

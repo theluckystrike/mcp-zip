@@ -17,6 +17,8 @@ quotes and exports into one file to send to an accountant. Everything runs on yo
 account, no API key, and no network call of any kind.
 
 
+npm publish for `@theluckystrike/mcp-zip` is pending, so `npx -y @theluckystrike/mcp-zip` returns 404 today. Until then, the `.mcpb` one-click bundle or a clone+build is the working path.
+
 ## Install
 
 Claude Desktop, `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or
