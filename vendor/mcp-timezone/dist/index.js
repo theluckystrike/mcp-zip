@@ -124,8 +124,27 @@ function monthKey(d = new Date()) {
 function outPathOf(p) {
     const abs = isAbsolute(p) ? p : pathResolve(process.cwd(), p);
     const dir = dirname(abs);
-    if (!existsSync(dir))
-        mkdirSync(dir, { recursive: true });
+    // mkdirSync(recursive) never returns on a pseudo-filesystem. Measured on Linux in a
+    // node:22-alpine container: mkdir("/proc/nope") answers ENOENT in 0 ms, Node reads that
+    // as a missing parent and retries forever, and the call had not returned after 25
+    // seconds. Any caller-supplied out_path under /proc, /sys or /dev hung the server
+    // permanently. The ancestors are walked here instead, under a hard bound, and each
+    // level is created non-recursively so a repeated ENOENT terminates on the first one.
+    if (!existsSync(dir)) {
+        const missing = [];
+        let cur = dir;
+        for (let i = 0; i < 64 && !existsSync(cur); i++) {
+            missing.push(cur);
+            const parent = dirname(cur);
+            if (parent === cur)
+                break;
+            cur = parent;
+        }
+        if (!existsSync(cur))
+            throw new Error(`cannot create ${dir}: no existing ancestor directory`);
+        for (const d of missing.reverse())
+            mkdirSync(d);
+    }
     return abs;
 }
 /* ---------------------------------------------------------------- server */

@@ -197,6 +197,32 @@ function readArchive(input: string): { path: string; buf: Uint8Array } {
   return { path, buf: new Uint8Array(readFileSync(path)) };
 }
 
+
+/**
+ * Create a directory and any missing ancestors, without mkdirSync's recursive mode.
+ *
+ * mkdirSync(recursive) never returns on a pseudo-filesystem: measured on Linux in a
+ * node:22-alpine container, mkdir("/proc/nope") answers ENOENT in 0 ms, Node reads that as
+ * a missing parent and retries forever, and the call had not returned after 25 seconds. Any
+ * caller-supplied output path under /proc, /sys or /dev hung the server permanently. The
+ * ancestors are walked here under a hard bound and each level is created non-recursively,
+ * so a repeated ENOENT terminates on the first one. Verified on Linux: /proc throws ENOENT
+ * and /sys throws EROFS, both in 0 ms, while a normal nested path still succeeds.
+ */
+function ensureDirBounded(dir: string): void {
+  if (existsSync(dir)) return;
+  const missing: string[] = [];
+  let cur = dir;
+  for (let i = 0; i < 64 && !existsSync(cur); i++) {
+    missing.push(cur);
+    const parent = dirname(cur);
+    if (parent === cur) break;
+    cur = parent;
+  }
+  if (!existsSync(cur)) throw new Error(`cannot create ${dir}: no existing ancestor directory`);
+  for (const d of missing.reverse()) mkdirSync(d);
+}
+
 function findingLines(findings: Finding[]): string {
   return findings.map((f) => `  - ${f.name || "(no name)"}: ${f.reason} - ${f.detail}`).join("\n");
 }
@@ -419,7 +445,7 @@ server.registerTool("zip_extract", {
     );
   }
 
-  mkdirSync(outDir, { recursive: true });
+  ensureDirBounded(outDir);
   let written = 0;
   let bytes = 0;
   const done: string[] = [];
@@ -429,7 +455,7 @@ server.registerTool("zip_extract", {
     if (bytes > maxTotal) {
       return fail(`extraction passed the ${humanBytes(maxTotal)} ceiling at ${p.e.name} after ${written} files; ${humanBytes(bytes)} is already on disk under ${outDir}. The remaining entries were not written.`);
     }
-    mkdirSync(dirname(p.target), { recursive: true });
+    ensureDirBounded(dirname(p.target));
     writeFileSync(p.target, data);
     written++;
     done.push(`  ${humanBytes(data.length).padStart(9)}  ${p.target}`);
